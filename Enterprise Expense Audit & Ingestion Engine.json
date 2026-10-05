@@ -1,0 +1,1437 @@
+{
+  "name": "Enterprise Expense Audit & Ingestion Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "receipt_image",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "receipt_image",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -2288,
+        -336
+      ],
+      "id": "81fab3b4-5d05-4211-9909-a6737419d92f",
+      "name": "Ingest: Web Form",
+      "webhookId": "0299cc18-f164-4b7e-9905-7a9aacf41218"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5f1d8c9b-ffb9-40d3-8286-f0fca592129e",
+              "name": "=receipt_image",
+              "value": "={{ $binary.receipt_image }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -2096,
+        -336
+      ],
+      "id": "e9a57654-224d-40e4-8e94-d1e04766711d",
+      "name": "Core: Image Normalizer"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "af2b4c40-4efa-4325-860f-66cdd50826ec",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1904,
+        -336
+      ],
+      "id": "da98a730-4ed7-4e75-b19e-17d773e4211f",
+      "name": "Gate: Quality Control"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BU9JU5TRT",
+          "mode": "list",
+          "cachedResultName": "all-stephen-oyugi"
+        },
+        "text": "=\n🚨 *[ACTION REQUIRED] Data Exception Review*\n\nAn incoming receipt failed validation or image quality checks and requires manual intervention.\n\n• *System Name:* Enterprise Expense Extraction Engine (EEEE)\n• *Trigger Source:* Early Pipeline Validation Gate\n• *Timestamp:* {{ $now.toISO() }}\n\n*Action Required:* Please review the raw submission from your web form or ingestion logs to resolve the issue.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -1904,
+        -640
+      ],
+      "id": "e4985974-f89c-43d5-bf03-7cb42731805f",
+      "name": "Route: Data Exception Review",
+      "webhookId": "a04e49d6-fc0a-407e-8f0f-79db0fe60d0d",
+      "credentials": {
+        "slackApi": {
+          "id": "6xi4QsPsnfNUj31c",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Extract the data from the provided receipt image and format it into a strict JSON object.\nDo not include Markdown formatting or conversational text. Use the following schema and rules:\nVendor:(string) The name of the store or merchant.\nDate:(string) The date of the transaction converted to DD/MM/YYYY format.\nItems:(string) Each item must be a single row formatted exactly as: name:<item name> -Qty:<quantity> -Total:<total price>,between the items have a newline\ntotal:(Float) The grand total amount paid.\nStrict formatting rule: Never use LaTeX or markdown escape codes such as \\vert{}. Output plain text values only",
+        "hasOutputParser": true,
+        "options": {
+          "passthroughBinaryImages": true,
+          "passthroughBinaryPdfs": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1712,
+        -352
+      ],
+      "id": "11aacdd7-5d82-4806-8553-81edc765ce30",
+      "name": "AI: Vision Extraction Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        -80
+      ],
+      "id": "bee9e6ed-35f2-43b8-9943-d5f270b76bb7",
+      "name": "LLM: Gemini Engine",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "mFuTIDlkF7EIXtkb",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"vendor_name\": \"WAECONMATT KINGORIS\",\n  \"vendor_kra_pin\": \"P052073784H\",\n  \"transaction_number\": \"680969\",\n  \"date\": \"09/09/2026\",\n  \"time\": \"10:54:22 AM\",\n  \"cashier\": \"GLADYS K\",\n  \"register_number\": \"2\",\n  \"customer_name\": \"STEPHEN OYUGI\",\n  \"served_by\": \"KIHARA\",\n  \"items\": [\n    {\n      \"code\": \"5200369\",\n      \"description\": \"SAL O/P COUNTER BOOK A4 4Q C\",\n      \"quantity\": 1,\n      \"unit_cost\": 350.00,\n      \"total_amount\": 350.00\n    },\n    {\n      \"code\": \"5200876\",\n      \"description\": \"SAL OP BALL PEN BLU BP02 50S\",\n      \"quantity\": 2,\n      \"unit_cost\": 15.00,\n      \"total_amount\": 30.00\n    }\n  ],\n  \"total\": 380.00,\n  \"vatable_amount\": 371.00,\n  \"vat_amount\": 52.00,\n  \"etims_cu_invoice_number\": \"0f4911b95-77c3-48e3-a614-a4a11f68eddn\",\n  \"etims_cu_serial_number\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1520,
+        -96
+      ],
+      "id": "eac5ff43-7cfb-4fd5-8063-ed460350ac42",
+      "name": "Parser: Schema Enforcer"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the incoming data\nlet data = $input.item.json.output ?? $input.item.json;\n\n// If AI returned JSON as a string, convert it to an object\nif (typeof data === \"string\") {\n    try {\n        data = JSON.parse(data);\n    } catch (error) {\n        return {\n            json: {\n                ...$input.item.json,\n                isValid: false,\n                validationError: \"AI output is not valid JSON\",\n                rawOutput: data\n            }\n        };\n    }\n}\n\n// Make absolutely sure data is an object\nif (!data || typeof data !== \"object\" || Array.isArray(data)) {\n    return {\n        json: {\n            ...$input.item.json,\n            isValid: false,\n            validationError: \"AI output is not a valid object\",\n            rawOutput: data\n        }\n    };\n}\n\n// Validate required invoice fields\nconst isValid =\n    Boolean(data.vendor_name) &&\n    Boolean(data.total);\n\n// Return a proper n8n item\nreturn {\n    json: {\n        ...data,\n        isValid: isValid\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1440,
+        -352
+      ],
+      "id": "eb6ea25f-3395-43c1-9bb5-6b5ea9d63cab",
+      "name": "Validate: Schema Integrity"
+    },
+    {
+      "parameters": {
+        "jsCode": "const clean = (value, fallback = \"N/A\") => {\n  if (value === null || value === undefined) return fallback;\n  let text = String(value)\n    .replace(/\\\\+vert\\{\\}/gi, \"\")\n    .replace(/\\{\\\\*vert\\}/gi, \"\")\n    .replace(/\\r\\n/g, \"\\n\")\n    .replace(/\\r/g, \"\\n\")\n    .trim();\n  return text || fallback;\n};\n\nconst get = (item, ...keys) => {\n  for (const key of keys) {\n    if (item[key] !== undefined && item[key] !== null && String(item[key]).trim() !== \"\") {\n      return clean(item[key]);\n    }\n  }\n  return \"N/A\";\n};\n\n// Process input items safely\nreturn $input.all().map((item, index) => {\n  const json = item.json;\n\n  const vendor = get(json, \"vendor_name\", \"Vendor\", \"vendor\", \"vendor_name\");\n  const kraPin = get(json, \"vendor_kra_pin\", \"Vendor KRA PIN\", \"KRA PIN\", \"kra_pin\");\n  const date = get(json, \"date\", \"Date\", \"receipt_date\", \"transaction_date\");\n  \n  // Dynamic Sequence ID calculation (01/date/001, 002, etc.)\n  const rawSeq = get(json, \"Sequence ID\", \"sequence_id\", \"SequenceID\", \"transaction_uid\");\n  const sequenceID = rawSeq !== \"N/A\" ? rawSeq : `01/${date !== \"N/A\" ? date : \"24-07-2026\"}/${String(index + 1).padStart(3, '0')}`;\n\n  const time = get(json, \"time\", \"Time\", \"receipt_time\");\n  const transactionNumber = get(json, \"transaction_number\", \"Transaction Number\", \"Transaction No\", \"transaction_no\");\n  const registerNumber = get(json, \"register_number\", \"Register Number\", \"Register No\", \"register_no\");\n  const cashier = get(json, \"cashier\", \"Cashier\", \"cashier_name\");\n  const servedBy = get(json, \"served_by\", \"Served By\", \"servedBy\", \"server\");\n  const customerName = get(json, \"customer_name\", \"Customer Name\", \"customer\");\n  const taxableAmount = get(json, \"taxable_amount\", \"Taxable Amount\", \"taxable\");\n  const vatAmount = get(json, \"vat_amount\", \"VAT Amount\", \"VAT\", \"vat\");\n  const totalAmount = get(json, \"total_amount\", \"Total Amount\", \"Total\", \"total\");\n  const etimsInvoice = get(json, \"etims_invoice_number\", \"eTIMS Invoice Number\", \"etims_invoice\", \"invoice_number\");\n  const imageURL = get(json, \"image_url\", \"Image URL\", \"ImageURL\");\n\n  let items = json[\"items\"] || json[\"Items Purchased\"] || json[\"items_purchased\"] || [];\n  if (typeof items === \"string\") {\n    try { items = JSON.parse(items); } catch { items = []; }\n  }\n\n  return {\n    json: {\n      ...json,\n      \"Sequence ID\": sequenceID,\n      \"Vendor\": vendor,\n      \"Vendor KRA PIN\": kraPin,\n      \"Date\": date,\n      \"Time\": time,\n      \"Transaction Number\": transactionNumber,\n      \"Register Number\": registerNumber,\n      \"Cashier\": cashier,\n      \"Served By\": servedBy,\n      \"Customer Name\": customerName,\n      \"Taxable Amount\": taxableAmount,\n      \"VAT Amount\": vatAmount,\n      \"Total Amount\": totalAmount,\n      \"eTIMS Invoice Number\": etimsInvoice,\n      \"Image URL\": imageURL,\n      \"Items Purchased\": items\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1264,
+        -352
+      ],
+      "id": "0f079a64-5aae-4026-9001-ce5045fd6c61",
+      "name": "Gen: Transaction UID"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2f4f043b-5a83-492a-be75-ee2a40b6f07d",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1072,
+        -352
+      ],
+      "id": "0abecb99-500a-405d-8ea9-d0527900a152",
+      "name": "Gate: Validation Check"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8",
+          "mode": "list",
+          "cachedResultName": "Receipt Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Vendor": "={{ $json.vendor_name }}",
+            "Vendor KRA PIN": "={{ $json.vendor_kra_pin }}",
+            "Time": "={{ $json.time }}",
+            "Transaction Number": "={{ $json.transaction_number }}",
+            "Register Number": "={{ $json.register_number }}",
+            "Cashier": "={{ $json.cashier }}",
+            "Served By": "={{ $json.served_by }}",
+            "Customer Name": "={{ $json.customer_name }}",
+            "VAT Amount": "={{ $json.vat_amount }}",
+            "Total Amount": "={{ $json.total }}",
+            "Taxable Amount": "={{ $json.vatable_amount }}",
+            "Image URL": "={{ $('Ingest: Web Form').first().binary.receipt_image.fileName }}",
+            "Items Purchased": "={{ $json.items }}",
+            "Date": "={{ $json.date }}",
+            "Sequence ID": "={{ $json.sequenceId }}",
+            "eTIMS Invoice Number.": "={{ $json.etims_cu_invoice_number }}"
+          },
+          "matchingColumns": [
+            "vendor"
+          ],
+          "schema": [
+            {
+              "id": "Sequence ID",
+              "displayName": "Sequence ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor KRA PIN",
+              "displayName": "Vendor KRA PIN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Transaction Number",
+              "displayName": "Transaction Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Register Number",
+              "displayName": "Register Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cashier",
+              "displayName": "Cashier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Served By",
+              "displayName": "Served By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Items Purchased",
+              "displayName": "Items Purchased",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Taxable Amount",
+              "displayName": "Taxable Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "VAT Amount",
+              "displayName": "VAT Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "eTIMS Invoice Number.",
+              "displayName": "eTIMS Invoice Number.",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Image URL",
+              "displayName": "Image URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -880,
+        -368
+      ],
+      "id": "382b162a-2a1b-4506-9f80-6ecaec9f1004",
+      "name": "DB: Ledger Append",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dQgrgEbNe4ToISs1",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0f816da7-fc6d-4ef7-b2b4-e7279904b2c3",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -704,
+        -368
+      ],
+      "id": "76288d0a-f17f-4e85-9439-9fe280b22db7",
+      "name": "Gate: Idempotency Check"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BU9JU5TRT",
+          "mode": "list",
+          "cachedResultName": "all-stephen-oyugi"
+        },
+        "text": "=🚨 *[ACTION REQUIRED] Expense Flagged for Review*\n\nAn uploaded receipt has been flagged by the extraction engine and requires manual verification before processing.\n\n• *System Name:* Enterprise Expense Extraction Engine (EEEE)\n• *Trigger Source:* Duplicate check or validation rule flag\n• *Timestamp:* {{ $now.toISO() }}\n\n*Action Required:* Please check your Google Sheets tracker and source documents to resolve the conflict or approve the receipt manually.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -688,
+        -672
+      ],
+      "id": "cd0cd47f-8848-4aa3-a169-e3147b89c3b7",
+      "name": "Alert: Slack Exception Flag",
+      "webhookId": "bdc52c22-69f1-4ee5-9e9b-db8dc91def6b",
+      "credentials": {
+        "slackApi": {
+          "id": "6xi4QsPsnfNUj31c",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "stephennyarangi03@gmail.com",
+        "subject": "=ACTION REQUIRED:Expense Receipt Flagged for Review",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; line-height: 1.6;\">\n  <h2 style=\"color: #E65100; margin-bottom: 0;\">⚠️ Expense Flagged for Manual Review</h2>\n  <p style=\"font-size: 14px; color: #555555;\">An uploaded receipt has been flagged by the extraction engine and requires manual verification before processing.</p>\n  \n  <hr style=\"border: none; border-top: 1px solid #E0E0E0; margin: 20px 0;\">\n\n  <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; width: 160px; color: #333;\">System Name:</td>\n      <td style=\"padding: 8px 0; color: #555;\">Enterprise Expense Extraction Engine (EEEE)</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Review Reason:</td>\n      <td style=\"padding: 8px 0; color: #E65100; font-weight: bold;\">Duplicate check or validation flag triggered</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Timestamp:</td>\n      <td style=\"padding: 8px 0; color: #555;\">{{ $now.toISO() }}</td>\n    </tr>\n  </table>\n\n  <div style=\"background-color: #FFF3E0; border-left: 4px solid #EF6C00; padding: 12px; margin-top: 20px; font-family: monospace; font-size: 13px; color: #E65100;\">\n    <strong>Action Required:</strong><br>\n    Please check your Google Sheets tracker and source documents to resolve the conflict or approve the receipt manually.\n  </div>\n\n  <p style=\"font-size: 12px; color: #888888; margin-top: 30px;\">\n    This is an automated operational alert generated by your Enterprise Expense Extraction Engine.\n  </p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -688,
+        -16
+      ],
+      "id": "1378a999-a09f-4f69-8619-8138aedf4529",
+      "name": "Alert: Email Exception Flag",
+      "webhookId": "6f75a97c-b52a-4f1f-a50b-31d27b8d4191",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MBUxyORTiMd6yjm1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n    const totalAmount = item.json.Total_Amount || item.json.total || 0;\n    \n    // Example policy check: Flag if amount exceeds maximum allowed limit (e.g., 50000)\n    item.json.policyPassed = totalAmount <= 50000;\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        -384
+      ],
+      "id": "20fe4aa4-9af3-4fee-9926-7f5066fd95b8",
+      "name": "Evaluate: Corporate Policy"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c09bcd05-0d0e-4876-a99c-2d289b320a7e",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        -384
+      ],
+      "id": "66df9966-1140-4630-a40f-f6e5f7846f20",
+      "name": "Gate: Compliance Audit"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BU9JU5TRT",
+          "mode": "list",
+          "cachedResultName": "all-stephen-oyugi"
+        },
+        "text": "=🚨 *[ACTION REQUIRED] Policy Exception Review*\n\nAn expense report failed corporate policy compliance checks and requires review.\n\n• *System Name:* Enterprise Expense Extraction Engine (EEEE)\n• *Trigger Source:* Compliance Audit Gate\n• *Timestamp:* {{ $now.toISO() }}\n\n*Action Required:* Please review the flagged expense entry to approve or reject it manually.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -320,
+        -672
+      ],
+      "id": "750778b4-1085-4543-8e2d-831757af3ff7",
+      "name": "Route: Policy Exception Review",
+      "webhookId": "f50c0e0d-a053-430e-bd7e-2495cd202fb1",
+      "credentials": {
+        "slackApi": {
+          "id": "6xi4QsPsnfNUj31c",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8",
+          "mode": "list",
+          "cachedResultName": "Receipt Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1726159043,
+          "mode": "list",
+          "cachedResultName": "Audit Log - Sheet 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit#gid=1726159043"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Sequence ID": "={{ $json['Sequence ID'] }}",
+            "Vendor": "={{ $json.Vendor }}",
+            "Vendor KRA PIN": "={{ $json['Vendor KRA PIN'] }}",
+            "Date": "={{ $json.Date }}",
+            "Time": "={{ $json.Time }}",
+            "Transaction Number": "={{ $json['Transaction Number'] }}",
+            "Register Number": "={{ $json['Register Number'] }}",
+            "Cashier": "={{ $json.Cashier }}",
+            "Served By": "={{ $json['Served By'] }}",
+            "Customer Name": "={{ $json['Customer Name'] }}",
+            "Items Purchased": "={{ $json['Items Purchased'] }}",
+            "Taxable Amount": "={{ $json['Taxable Amount'] }}",
+            "VAT Amount": "={{ $json['VAT Amount'] }}",
+            "Total Amount": "={{ $json['Total Amount'] }}",
+            "eTIMS Invoice Number": "={{ $json['eTIMS Invoice Number'] }}",
+            "Image URL": "={{ $json['Image URL'] }}"
+          },
+          "matchingColumns": [
+            "Sequence ID"
+          ],
+          "schema": [
+            {
+              "id": "Sequence ID",
+              "displayName": "Sequence ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor KRA PIN",
+              "displayName": "Vendor KRA PIN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Transaction Number",
+              "displayName": "Transaction Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Register Number",
+              "displayName": "Register Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Cashier",
+              "displayName": "Cashier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Served By",
+              "displayName": "Served By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Items Purchased",
+              "displayName": "Items Purchased",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Taxable Amount",
+              "displayName": "Taxable Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "VAT Amount",
+              "displayName": "VAT Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "eTIMS Invoice Number",
+              "displayName": "eTIMS Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Image URL",
+              "displayName": "Image URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        -400
+      ],
+      "id": "585161c1-c515-4a5b-af92-592e24969acb",
+      "name": "Sync: Executive Ledger",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dQgrgEbNe4ToISs1",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "stephennyarangi03@gmail.com",
+        "subject": "={{ $json['Sequence ID'] }}",
+        "message": "=<p>Hello,</p>\n<p>A new receipt has been successfully validated, approved, and logged to the report.</p>\n<ul>\n  <li><strong>Sequence ID:</strong> {{ $json['Sequence ID'] }}</li>\n  <li><strong>Vendor:</strong> {{ $json.Vendor }}</li>\n  <li><strong>Vendor KRA PIN:</strong> {{ $json['Vendor KRA PIN'] }}</li>\n  <li><strong>Transaction Number:</strong> {{ $json['Transaction Number'] }}</li>\n  <li><strong>Total Amount:</strong> {{ $json['Total Amount'] }}</li>\n  <li><strong>eTIMS Invoice Number:</strong> {{ $json['eTIMS Invoice Number'] }}</li>\n</ul>\n<p>Best regards,<br>Automated Receipt Processing System</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        -688
+      ],
+      "id": "22dfe04e-5121-44aa-984e-67b13ce56d41",
+      "name": "Dispatch: Executive Summary (Email)",
+      "webhookId": "4b7b128d-21b5-4578-9554-98e757ee803f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MBUxyORTiMd6yjm1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BUBTTE84E",
+          "mode": "list",
+          "cachedResultName": "receipt-uploads"
+        },
+        "text": "=\n  📋 *New Approved Expense Report Logged*\n\n*Sequence ID:* {{ $json[\"Sequence ID\"] }}\n*Vendor:* {{ $json[\"Vendor\"] }}\n*Vendor KRA PIN:* {{ $json[\"Vendor KRA PIN\"] }}\n*Date:* {{ $json[\"Date\"] }}\n*Time:* {{ $json[\"Time\"] }}\n*Transaction Number:* {{ $json[\"Transaction Number\"] }}\n*Register Number:* {{ $json[\"Register Number\"] }}\n*Cashier:* {{ $json[\"Cashier\"] }}\n*Served By:* {{ $json[\"Served By\"] }}\n*Customer Name:* {{ $json[\"Customer Name\"] }}\n*Taxable Amount:* {{ $json[\"Taxable Amount\"] }}\n*VAT Amount:* {{ $json[\"VAT Amount\"] }}\n*Total Amount:* {{ $json[\"Total Amount\"] }}\n*eTIMS Invoice Number:* {{ $json[\"eTIMS Invoice Number\"] }}\n\n*Image:* {{ $json[\"Image URL\"] }}\n\n_Automated with n8n workflow_",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        -400
+      ],
+      "id": "ac17f043-0019-44fe-86c0-89dd6db2a45b",
+      "name": "Dispatch: Operations Feed (Slack)",
+      "webhookId": "fc0d8e5e-aa85-4519-9a41-d0572d470610",
+      "credentials": {
+        "slackApi": {
+          "id": "6xi4QsPsnfNUj31c",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8",
+          "mode": "list",
+          "cachedResultName": "Audit Log - Sheet 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1726159043,
+          "mode": "list",
+          "cachedResultName": "Audit Log - Sheet 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1u6cgQYRwf6q3r3zOf22iHXlB1iU-b0ZRHH1JJlBr3L8/edit#gid=1726159043"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Image URL": "={{ $json['Image URL'] }}",
+            "eTIMS Invoice Number": "={{ $json['eTIMS Invoice Number'] }}",
+            "Total Amount": "={{ $json['Total Amount'] }}",
+            "VAT Amount": "={{ $json['VAT Amount'] }}",
+            "Taxable Amount": "={{ $json['Taxable Amount'] }}",
+            "Items Purchased": "={{ $json['Items Purchased'].map(item => `- ${item.description} (Qty: ${item.quantity}, Cost: ${item.unit_cost})`).join('<br>') }}",
+            "Customer Name": "={{ $json['Customer Name'] }}",
+            "Served By": "={{ $json['Served By'] }}",
+            "Cashier": "={{ $json.Cashier }}",
+            "Register Number": "={{ $json['Register Number'] }}",
+            "Transaction Number": "={{ $json['Transaction Number'] }}",
+            "Time": "={{ $json.Time }}",
+            "Date": "={{ $json.Date }}",
+            "Vendor KRA PIN": "={{ $json['Vendor KRA PIN'] }}",
+            "Vendor": "={{ $json['Vendor KRA PIN'] }}",
+            "Sequence ID": "={{ $json['Sequence ID'] }}"
+          },
+          "matchingColumns": [
+            "Sequence ID"
+          ],
+          "schema": [
+            {
+              "id": "Sequence ID",
+              "displayName": "Sequence ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Vendor KRA PIN",
+              "displayName": "Vendor KRA PIN",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Transaction Number",
+              "displayName": "Transaction Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Register Number",
+              "displayName": "Register Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cashier",
+              "displayName": "Cashier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Served By",
+              "displayName": "Served By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Items Purchased",
+              "displayName": "Items Purchased",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Taxable Amount",
+              "displayName": "Taxable Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VAT Amount",
+              "displayName": "VAT Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "eTIMS Invoice Number",
+              "displayName": "eTIMS Invoice Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Image URL",
+              "displayName": "Image URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "0ebaa50e-247c-446a-bd5b-b2fafce4486b",
+      "name": "Sync: KPI Analytics Dashboard",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "dQgrgEbNe4ToISs1",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "stephennyarangi03@gmail.com",
+        "subject": "=ACTION REQUIRED: Policy Exception Review",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; line-height: 1.6;\">\n  <h2 style=\"color: #D32F2F; margin-bottom: 0;\">🚨 [ACTION REQUIRED] Policy Exception Review</h2>\n  <p style=\"font-size: 14px; color: #555555;\">An expense report failed corporate policy compliance checks and requires review.</p>\n  \n  <hr style=\"border: none; border-top: 1px solid #E0E0E0; margin: 20px 0;\">\n\n  <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; width: 160px; color: #333;\">System Name:</td>\n      <td style=\"padding: 8px 0; color: #555;\">Enterprise Expense Extraction Engine (EEEE)</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Trigger Source:</td>\n      <td style=\"padding: 8px 0; color: #D32F2F; font-weight: bold;\">Compliance Audit Gate</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Timestamp:</td>\n      <td style=\"padding: 8px 0; color: #555;\">{{ $now.toISO() }}</td>\n    </tr>\n  </table>\n\n  <div style=\"background-color: #FFEBEE; border-left: 4px solid #D32F2F; padding: 12px; margin-top: 20px; font-family: monospace; font-size: 13px; color: #C62828;\">\n    <strong>Action Required:</strong><br>\n    Please review the flagged expense entry to approve or reject it manually.\n  </div>\n\n  <p style=\"font-size: 12px; color: #888888; margin-top: 30px;\">\n    This is an automated operational alert generated by your Enterprise Expense Extraction Engine.\n  </p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        -32
+      ],
+      "id": "de1ab6e4-ef70-4bf1-853b-55a5155c218a",
+      "name": "Dispatch: Policy Exception Alert (Email)",
+      "webhookId": "ab27b21d-0149-42de-944b-1a94119cd6ff",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MBUxyORTiMd6yjm1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "stephennyarangi03@gmail.com",
+        "subject": "=ACTION REQUIRED: Data Exception Review",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; line-height: 1.6;\">\n  <h2 style=\"color: #E65100; margin-bottom: 0;\">⚠️ [ACTION REQUIRED] Data Exception Review</h2>\n  <p style=\"font-size: 14px; color: #555555;\">An incoming receipt failed early pipeline validation or image quality checks and requires manual intervention.</p>\n  \n  <hr style=\"border: none; border-top: 1px solid #E0E0E0; margin: 20px 0;\">\n\n  <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; width: 160px; color: #333;\">System Name:</td>\n      <td style=\"padding: 8px 0; color: #555;\">Enterprise Expense Extraction Engine (EEEE)</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Trigger Source:</td>\n      <td style=\"padding: 8px 0; color: #E65100; font-weight: bold;\">Early Pipeline Validation Gate</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Timestamp:</td>\n      <td style=\"padding: 8px 0; color: #555;\">{{ $now.toISO() }}</td>\n    </tr>\n  </table>\n\n  <div style=\"background-color: #FFF3E0; border-left: 4px solid #EF6C00; padding: 12px; margin-top: 20px; font-family: monospace; font-size: 13px; color: #E65100;\">\n    <strong>Action Required:</strong><br>\n    Please review the raw submission from your web form or ingestion logs to resolve the issue.\n  </div>\n\n  <p style=\"font-size: 12px; color: #888888; margin-top: 30px;\">\n    This is an automated operational alert generated by your Enterprise Expense Extraction Engine.\n  </p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1072,
+        -16
+      ],
+      "id": "0dddb6ff-59d8-49e6-be94-162e213eb2ae",
+      "name": "Data Exception Alert (Email)",
+      "webhookId": "27051c0d-4491-4ef0-bdc5-796d6527b04c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MBUxyORTiMd6yjm1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "stephennyarangi03@gmail.com",
+        "subject": "=ACTION REQUIRED: Image Quality Review Failed",
+        "message": "=<div style=\"font-family: Arial, sans-serif; color: #333333; line-height: 1.6;\">\n  <h2 style=\"color: #C2185B; margin-bottom: 0;\">🖼️ [ACTION REQUIRED] Image Quality Review Failed</h2>\n  <p style=\"font-size: 14px; color: #555555;\">An uploaded receipt image failed clarity and preprocessing checks and could not be read by the vision agent.</p>\n  \n  <hr style=\"border: none; border-top: 1px solid #E0E0E0; margin: 20px 0;\">\n\n  <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; width: 160px; color: #333;\">System Name:</td>\n      <td style=\"padding: 8px 0; color: #555;\">Enterprise Expense Extraction Engine (EEEE)</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Trigger Source:</td>\n      <td style=\"padding: 8px 0; color: #C2185B; font-weight: bold;\">Gate: Quality Control (Image Check)</td>\n    </tr>\n    <tr>\n      <td style=\"padding: 8px 0; font-weight: bold; color: #333;\">Timestamp:</td>\n      <td style=\"padding: 8px 0; color: #555;\">{{ $now.toISO() }}</td>\n    </tr>\n  </table>\n\n  <div style=\"background-color: #FCE4EC; border-left: 4px solid #D81B60; padding: 12px; margin-top: 20px; font-family: monospace; font-size: 13px; color: #AD1457;\">\n    <strong>Action Required:</strong><br>\n    Please contact the submitter to request a clear, high-resolution copy of the receipt image.\n  </div>\n\n  <p style=\"font-size: 12px; color: #888888; margin-top: 30px;\">\n    This is an automated operational alert generated by your Enterprise Expense Extraction Engine.\n  </p>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1904,
+        48
+      ],
+      "id": "1ff0f110-c5b3-4343-9429-578b5390d5b9",
+      "name": "Dispatch: Data Exception Alert (Email)",
+      "webhookId": "43ce291e-9667-43db-9b7e-29a2a916b3d4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MBUxyORTiMd6yjm1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BU9JU5TRT",
+          "mode": "list",
+          "cachedResultName": "all-stephen-oyugi"
+        },
+        "text": "=🚨 *[ACTION REQUIRED] Data Validation Exception*\n\nAn item failed the validation check stage and requires manual review.\n\n• *System Name:* Enterprise Expense Extraction Engine (EEEE)\n• *Trigger Source:* Gate: Validation Check (False Output)\n• *Timestamp:* {{ $now.toISO() }}\n\n*Action Required:* Please inspect the data schema and correct any formatting or extraction discrepancies.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -1072,
+        -672
+      ],
+      "id": "1ce5b301-e2ac-439e-9003-a3342e4a0933",
+      "name": "Alert: Data Validation Exception (Slack)",
+      "webhookId": "05596280-262b-4c84-862d-37336265f113",
+      "credentials": {
+        "slackApi": {
+          "id": "6xi4QsPsnfNUj31c",
+          "name": "Slack account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ingest: Web Form": {
+      "main": [
+        [
+          {
+            "node": "Core: Image Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Core: Image Normalizer": {
+      "main": [
+        [
+          {
+            "node": "Gate: Quality Control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate: Quality Control": {
+      "main": [
+        [
+          {
+            "node": "AI: Vision Extraction Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route: Data Exception Review",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dispatch: Data Exception Alert (Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Vision Extraction Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate: Schema Integrity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM: Gemini Engine": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI: Vision Extraction Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser: Schema Enforcer": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI: Vision Extraction Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate: Schema Integrity": {
+      "main": [
+        [
+          {
+            "node": "Gen: Transaction UID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gen: Transaction UID": {
+      "main": [
+        [
+          {
+            "node": "Gate: Validation Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate: Validation Check": {
+      "main": [
+        [
+          {
+            "node": "DB: Ledger Append",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Data Exception Alert (Email)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Alert: Data Validation Exception (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB: Ledger Append": {
+      "main": [
+        [
+          {
+            "node": "Gate: Idempotency Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate: Idempotency Check": {
+      "main": [
+        [
+          {
+            "node": "Evaluate: Corporate Policy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert: Slack Exception Flag",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Alert: Email Exception Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate: Corporate Policy": {
+      "main": [
+        [
+          {
+            "node": "Gate: Compliance Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate: Compliance Audit": {
+      "main": [
+        [
+          {
+            "node": "Sync: Executive Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dispatch: Policy Exception Alert (Email)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Route: Policy Exception Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync: Executive Ledger": {
+      "main": [
+        [
+          {
+            "node": "Dispatch: Executive Summary (Email)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dispatch: Operations Feed (Slack)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Sync: KPI Analytics Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch: Executive Summary (Email)": {
+      "main": [
+        []
+      ]
+    },
+    "Dispatch: Operations Feed (Slack)": {
+      "main": [
+        []
+      ]
+    },
+    "Dispatch: Policy Exception Alert (Email)": {
+      "main": [
+        []
+      ]
+    },
+    "Dispatch: Data Exception Alert (Email)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "a3SrhMfvCW8K38oM"
+  },
+  "versionId": "f49211df-6ae9-4aa5-8bbc-c37ad97d2608",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab173268efb8fe63d8276a805d8b6ca4c871b475a426103096066663b4ac8cbf"
+  },
+  "nodeGroups": [],
+  "id": "Y40gtMvFHPWTLZle",
+  "tags": []
+}
